@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2024-01-01",
+    "description": "Knowledge base for voice AI bot"
+  },
+  "entries": [
+    {
+      "question": "What are your business hours?",
+      "answer": "We are open Monday to Friday, 9 AM to 6 PM.",
+      "category": "general",
+      "language": "en-IN",
+      "keywords": ["hours", "timing", "open", "closed", "schedule"]
+    },
+    {
+      "question": "How can I contact support?",
+      "answer": "You can reach our support team at support@example.com or call us at 1-800-SUPPORT.",
+      "category": "support",
+      "language": "en-IN",
+      "keywords": ["contact", "support", "help", "email", "phone"]
+    },
+    {
+      "question": "What services do you offer?",
+      "answer": "We offer voice AI solutions, customer support automation, and multilingual conversation systems.",
+      "category": "services",
+      "language": "en-IN",
+      "keywords": ["services", "products", "offerings", "solutions"]
+    }
+  ]
+}

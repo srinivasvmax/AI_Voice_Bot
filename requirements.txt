@@ -1,0 +1,35 @@
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets==12.0
+
+# Pipecat Framework
+pipecat-ai==0.0.97
+
+# Twilio
+twilio==8.11.0
+
+# HTTP Client
+httpx==0.26.0
+aiohttp>=3.11.12
+
+# Audio Processing (using built-in audioop)
+onnxruntime>=1.16.0
+
+# Configuration
+pydantic>=2.10.6
+pydantic-settings>=2.1.0
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# Logging
+loguru>=0.7.3
+
+# Utilities
+python-multipart==0.0.6
+
+# Production Dependencies
+redis==5.0.1
+aioredis==2.0.1
+slowapi==0.1.9
+prometheus-client==0.19.0

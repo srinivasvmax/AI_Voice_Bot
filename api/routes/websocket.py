@@ -1,0 +1,157 @@
+"""WebSocket route for media streaming."""
+import asyncio
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from loguru import logger
+
+from pipeline.runner import run_bot
+from api.dependencies import get_session, store_session, remove_session
+from models.call_session import CallState
+
+router = APIRouter(tags=["websocket"])
+
+
+@router.get("/media-stream-test")
+async def test_media_stream():
+    """Test endpoint to verify media-stream route is accessible."""
+    return {
+        "status": "ok",
+        "message": "Media stream endpoint is accessible",
+        "websocket_url": "/media-stream/{language}"
+    }
+
+
+@router.websocket("/media-stream")
+async def handle_media_stream_fallback(websocket: WebSocket):
+    """
+    Fallback route for backward compatibility.
+    Redirects to default English language.
+    """
+    logger.warning("⚠️ WebSocket connected without language parameter, using default en-IN")
+    await handle_media_stream(websocket, "en-IN")
+
+
+@router.websocket("/media-stream/{language}")
+async def handle_media_stream(
+    websocket: WebSocket,
+    language: str = "en-IN"
+):
+    """
+    Handle Twilio media stream WebSocket connection.
+    
+    ✅ FIX: Language passed via URL path (Twilio strips query params)
+    ✅ FIX: WebSocket lifecycle - DO NOT consume messages manually
+    Let Pipecat transport handle ALL WebSocket events
+    
+    This is where the real-time voice conversation happens.
+    
+    Args:
+        websocket: WebSocket connection
+        language: Selected language code from URL path
+    """
+    logger.info("=" * 80)
+    logger.info("🔌 WebSocket CONNECTION ATTEMPT!")
+    logger.info(f"🔌 Headers: {websocket.headers}")
+    logger.info(f"🔌 Query params: {websocket.query_params}")
+    logger.info("=" * 80)
+    
+    try:
+        # Accept WebSocket connection
+        await websocket.accept()
+        
+        logger.info("=" * 80)
+        logger.info("✅ WebSocket ACCEPTED!")
+        logger.info(f"🔌 Client: {websocket.client}")
+        logger.info("=" * 80)
+        
+        # Get language from path parameter (passed via route)
+        selected_language = language
+        
+        # CRITICAL: Extract stream_sid and call_sid from Twilio's 'start' message
+        # Following the reference pattern: read messages until we get 'start'
+        # Twilio sends: 1) {"event": "connected"} 2) {"event": "start", "streamSid": "...", ...}
+        
+        logger.info("🎬 Waiting for Twilio 'start' message to extract stream_sid...")
+        
+        stream_sid = None
+        call_sid = None
+        
+        # Read messages until we get the 'start' event
+        # This handles both 'connected' and 'start' messages
+        while not stream_sid:
+            msg = await websocket.receive_json()
+            event = msg.get("event")
+            
+            logger.info(f"📨 Received Twilio event: {event}")
+            
+            if event == "connected":
+                logger.info("✅ Twilio connection confirmed")
+                continue
+            
+            elif event == "start":
+                # Extract IDs from the start message
+                stream_sid = msg.get("streamSid")
+                call_sid = msg.get("start", {}).get("callSid")
+                
+                if not stream_sid or not call_sid:
+                    raise ValueError(f"Missing stream_sid or call_sid in start message: {msg}")
+                
+                logger.info(f"✅ Extracted from Twilio: stream_sid={stream_sid}, call_sid={call_sid}")
+                logger.debug(f"🎬 Full start message: {msg}")
+                break
+            
+            else:
+                logger.warning(f"⚠️ Unexpected Twilio event: {event}")
+                # Continue reading in case there are other messages before 'start'
+        
+    except Exception as e:
+        logger.error(f"❌ WebSocket setup error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise
+    
+    try:
+        # Now that we have the real stream_sid and call_sid from Twilio,
+        # we can create the transport with the correct IDs.
+        # The transport will continue reading from the WebSocket (media frames).
+        # We've already consumed the 'connected' and 'start' messages,
+        # so the transport will only see 'media' and 'stop' messages.
+        logger.info("=" * 80)
+        logger.info(f"🤖 [CHECKPOINT 0] Starting bot with stream_sid={stream_sid}, call_sid={call_sid}")
+        logger.info("=" * 80)
+        
+        # Run the bot pipeline with the real Stream SID and Call SID from Twilio
+        session = await run_bot(
+            websocket=websocket,
+            stream_sid=stream_sid,  # Real Stream SID extracted from Twilio's 'start' message
+            call_sid=call_sid,      # Real Call SID extracted from Twilio's 'start' message
+            language=selected_language
+        )
+        
+        # Store final session
+        await store_session(session)
+        
+        logger.info("=" * 80)
+        logger.info("🏁 [CHECKPOINT FINAL] Bot finished - call ended")
+        logger.info("=" * 80)
+        
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for stream {stream_sid}")
+        
+    except asyncio.CancelledError:
+        logger.info(f"WebSocket cancelled for stream {stream_sid}")
+        
+    except Exception as e:
+        logger.error(f"❌ WebSocket error for stream {stream_sid}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+    finally:
+        # Cleanup
+        logger.info(f"Cleaning up WebSocket for stream {stream_sid}")
+        
+        if websocket.client_state.name == "CONNECTED":
+            try:
+                await websocket.close()
+                logger.info("🔌 WebSocket closed")
+            except Exception:
+                pass

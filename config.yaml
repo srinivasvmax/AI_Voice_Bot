@@ -1,0 +1,79 @@
+# Voice AI Bot Configuration
+
+# Server Configuration
+server:
+  host: 0.0.0.0
+  port: 8000
+  debug: true
+
+# STT Configuration
+stt:
+  model: saarika:v2.5
+  sample_rate: 16000
+
+# LLM Configuration
+llm:
+  model: sarvam-m
+  max_tokens: 512
+  temperature: 0.7
+  top_p: 0.85
+  frequency_penalty: 0.3
+  presence_penalty: 0.2
+
+# TTS Configuration
+tts:
+  model: bulbul:v2
+  voice: anushka
+  sample_rate: 8000
+
+# Audio Configuration
+audio:
+  chunk_size: 160
+  sample_rate_in: 8000
+  sample_rate_out: 8000
+
+# VAD Configuration
+vad:
+  enabled: true
+  confidence: 0.7
+  stop_secs: 1.5
+  start_secs: 0.3
+  min_volume: 0.6
+
+# Pipeline Configuration
+pipeline:
+  aggregation_timeout: 0.8
+  max_silence_duration: 300.0
+
+# Feature Flags
+features:
+  save_debug_audio: false
+  debug_audio_dir: debug_audio
+  enable_analytics: true
+
+# Logging
+logging:
+  level: INFO
+  rotation: 10 MB
+  retention: 7 days
+
+# Rate Limiting
+rate_limit:
+  requests_per_minute: 60
+
+# Knowledge Base
+knowledge:
+  base_path: knowledge/Querie.json
+
+# Supported Languages
+languages:
+  "1":
+    code: te-IN
+    name: Telugu
+  "2":
+    code: hi-IN
+    name: Hindi
+  "3":
+    code: en-IN
+    name: English
+
