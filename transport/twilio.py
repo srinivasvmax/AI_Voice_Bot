@@ -15,7 +15,7 @@ from app.config import settings
 def create_twilio_transport(
     websocket: WebSocket,
     stream_sid: str = None,
-    language: str = "en-IN"
+    language: str = None
 ) -> FastAPIWebsocketTransport:
     """
     Create and configure Twilio WebSocket transport.
@@ -30,20 +30,24 @@ def create_twilio_transport(
     """
     logger.info(f"Creating Twilio transport: stream_sid={stream_sid or 'will be extracted from Twilio'}, language={language}")
     
-    # Configure VAD parameters
-    # CRITICAL: stop_secs MUST be >= aggregation_timeout (0.8s)
-    # This ensures UserStoppedSpeakingFrame comes AFTER the aggregation timeout
-    vad_params = VADParams(
-        confidence=0.8,  # Increased from 0.7 to reduce false positives
-        start_secs=0.3,  # Increased from 0.2 to avoid noise triggering
-        stop_secs=1.0,   # Increased from 0.8 to allow longer pauses
-        min_volume=0.7   # Increased from 0.6 to filter out background noise
-    )
+    # VAD Configuration - Let STT service handle VAD instead of transport
+    # The Sarvam STT service has built-in VAD that's more accurate
+    from app.config import settings
     
-    # Create VAD analyzer
-    vad_analyzer = SileroVADAnalyzer(params=vad_params)
-    
-    logger.info(f"✅ VAD configured: confidence={vad_params.confidence}, start={vad_params.start_secs}s, stop={vad_params.stop_secs}s, min_volume={vad_params.min_volume}")
+    vad_analyzer = None
+    if settings.VAD_ENABLED:
+        vad_params = VADParams(
+            confidence=settings.VAD_CONFIDENCE,
+            start_secs=settings.VAD_START_SECS,
+            stop_secs=settings.VAD_STOP_SECS,
+            min_volume=settings.VAD_MIN_VOLUME
+        )
+        
+        # Create VAD analyzer
+        vad_analyzer = SileroVADAnalyzer(params=vad_params)
+        logger.info(f"✅ Transport VAD configured: confidence={vad_params.confidence}, start={vad_params.start_secs}s, stop={vad_params.stop_secs}s, min_volume={vad_params.min_volume}")
+    else:
+        logger.info("✅ Transport VAD disabled - using STT service VAD")
     
     # Configure Twilio serializer
     # CRITICAL: Twilio sends mulaw at 8kHz, serializer decodes to PCM at 16kHz (Pipecat default)
@@ -63,7 +67,7 @@ def create_twilio_transport(
         audio_in_enabled=True,
         audio_out_enabled=True,
         add_wav_header=False,  # Twilio uses raw mulaw
-        vad_analyzer=vad_analyzer if settings.VAD_ENABLED else None,
+        vad_analyzer=vad_analyzer,
         audio_in_passthrough=True,  # Pass audio through to STT (new parameter name)
         serializer=serializer
     )

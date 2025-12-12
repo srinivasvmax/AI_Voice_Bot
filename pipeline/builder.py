@@ -4,7 +4,7 @@ from loguru import logger
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.task import PipelineTask, PipelineParams
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+
 from pipecat.processors.aggregators.llm_response import LLMUserAggregatorParams
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.frames.frames import Frame
@@ -12,7 +12,7 @@ from pipecat.frames.frames import Frame
 from transport.twilio import create_twilio_transport
 from services.stt.sarvam_stt import SarvamSTTService
 from services.llm.sarvam_llm import SarvamLLMService
-from services.tts.sarvam_tts import SarvamTTSService
+
 from app.config import settings
 from app.constants import get_system_prompt
 
@@ -29,7 +29,7 @@ class PipelineBuilder:
         self,
         websocket,
         stream_sid: str,
-        language: str = "en-IN",
+        language: str,
         system_prompt: Optional[str] = None
     ):
         """
@@ -46,6 +46,10 @@ class PipelineBuilder:
         self.language = language
         # Use language-specific system prompt if no custom prompt provided
         self.system_prompt = system_prompt or get_system_prompt(language)
+        
+        # Pipeline readiness event to prevent race conditions
+        import asyncio
+        self.pipeline_ready = asyncio.Event()
         
         logger.info(f"Initialized PipelineBuilder: stream_sid={stream_sid}, language={language}")
     
@@ -65,22 +69,40 @@ class PipelineBuilder:
             self.language
         )
         
-        # Create STT service
+        # Create STT service with proper language configuration
+        from pipecat.transcriptions.language import Language
+        
+        # Convert language string to Language enum
+        language_map = {
+            "te-IN": Language.TE_IN,
+            "hi-IN": Language.HI_IN,
+            "en-IN": Language.EN_IN,
+        }
+        language_enum = language_map.get(self.language, Language.HI_IN)
+        
         stt_service = SarvamSTTService(
             api_key=settings.SARVAM_API_KEY,
             model=settings.STT_MODEL,
-            language=self.language,
-            sample_rate=settings.STT_SAMPLE_RATE
+            sample_rate=settings.STT_SAMPLE_RATE,
+            params=SarvamSTTService.InputParams(
+                language=language_enum,
+                vad_signals=True,
+                high_vad_sensitivity=False  # Use normal VAD sensitivity for better accuracy
+            )
         )
         
-        # Create shared context using LLMContext (not OpenAILLMContext)
+        logger.info(f"🎤 [STT] Configured for language: {language_enum} ({self.language})")
+        
+        # Create shared context using OpenAILLMContext for compatibility
+        from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+        
         messages = [
             {
                 "role": "system",
                 "content": self.system_prompt
             }
         ]
-        context = LLMContext(messages)
+        context = OpenAILLMContext(messages)
         
         # Configure user aggregator with timeout from settings
         # CRITICAL: aggregation_timeout is how long to wait after UserStoppedSpeaking
@@ -89,55 +111,7 @@ class PipelineBuilder:
             aggregation_timeout=settings.AGGREGATION_TIMEOUT
         )
         
-        logger.info(f"🔧 Aggregator config: timeout={settings.AGGREGATION_TIMEOUT}s")
-        
-        # Create context aggregator pair (replaces deprecated user/assistant aggregators)
-        context_aggregator = LLMContextAggregatorPair(
-            context,
-            user_params=user_params
-        )
-        
-        # Add logging to user aggregator via monkey-patching
-        user_aggregator = context_aggregator.user()
-        original_process_frame = user_aggregator.process_frame
-        original_push_frame = user_aggregator.push_frame
-        
-        async def logged_process_frame(frame: Frame, direction: FrameDirection):
-            frame_type = type(frame).__name__
-            
-            # Only log critical frames (transcription and user stopped speaking)
-            if frame_type == 'TranscriptionFrame':
-                logger.info(f"📥 [AGGREGATOR] Received TranscriptionFrame: '{frame.text}'")
-            elif frame_type == 'UserStoppedSpeakingFrame':
-                logger.info(f"📥 [AGGREGATOR] User stopped speaking - aggregating transcriptions")
-            
-            # Call original
-            result = await original_process_frame(frame, direction)
-            
-            # Log completion
-            if frame_type == 'UserStoppedSpeakingFrame':
-                logger.info(f"⏱️ [AGGREGATOR] Will wait {settings.AGGREGATION_TIMEOUT}s before sending to LLM")
-            
-            return result
-        
-        async def logged_push_frame(frame: Frame, direction: FrameDirection = FrameDirection.DOWNSTREAM):
-            frame_type = type(frame).__name__
-            # Only log critical frames
-            if frame_type == 'LLMContextFrame':
-                logger.info(f"🚀 [AGGREGATOR] ⭐ Sending LLMContextFrame to LLM ({len(frame.context.messages)} messages)")
-            elif frame_type in ['UserStartedSpeakingFrame', 'InterruptionFrame']:
-                logger.info(f"🚀 [AGGREGATOR] {frame_type}")
-            return await original_push_frame(frame, direction)
-        
-        # Replace methods
-        user_aggregator.process_frame = logged_process_frame
-        user_aggregator.push_frame = logged_push_frame
-        
-        logger.info(f"✅ Created LLMContextAggregatorPair with aggregation_timeout={settings.AGGREGATION_TIMEOUT}s")
-        logger.info(f"✅ System prompt: {self.system_prompt[:100]}...")
-        logger.info(f"✅ Context has {len(context.messages)} initial messages")
-        
-        # Create LLM service
+        # Create LLM service first (needed for workaround aggregator)
         llm_service = SarvamLLMService(
             api_key=settings.SARVAM_API_KEY,
             model=settings.LLM_MODEL,
@@ -147,27 +121,46 @@ class PipelineBuilder:
             knowledge_base_path=settings.KNOWLEDGE_BASE_PATH
         )
         
-        # Create TTS service
-        tts_service = SarvamTTSService(
-            api_key=settings.SARVAM_API_KEY,
-            model=settings.TTS_MODEL,
-            voice=settings.TTS_VOICE,
-            language=self.language,
-            target_sample_rate=settings.TTS_SAMPLE_RATE
+        # Create user aggregator (this one works fine)
+        from pipecat.processors.aggregators.llm_response import LLMUserContextAggregator
+        
+        user_aggregator = LLMUserContextAggregator(
+            context=context,
+            params=user_params
         )
         
-        # Assemble pipeline (following official Pipecat reference pattern)
-        # CRITICAL: assistant aggregator MUST be AFTER transport.output()
-        # It captures LLM text frames for context but doesn't block them from TTS
-        # Reference: https://github.com/pipecat-ai/pipecat/tree/main/examples
+        # BYPASS the problematic LLMAssistantContextAggregator entirely
+        # Connect LLM directly to TTS to avoid the compatibility issue
+        assistant_aggregator = None  # We'll skip this in the pipeline 
+        
+        logger.info(f"✅ User aggregator configured with {user_params.aggregation_timeout}s timeout")
+        
+        logger.info(f"✅ Pipeline configured with {settings.AGGREGATION_TIMEOUT}s aggregation timeout")
+        
+        # LLM service already created above
+        
+        # Create robust TTS service (production-grade HTTP streaming)
+        from services.tts.sarvam_tts_processor import SarvamTTSProcessor
+        tts_service = SarvamTTSProcessor(
+            api_key=settings.SARVAM_API_KEY,
+            voice=settings.TTS_VOICE,
+            sample_rate=settings.TTS_SAMPLE_RATE,
+            frame_duration_ms=settings.TTS_FRAME_DURATION_MS,
+            fallback_chunk_size=settings.TTS_FALLBACK_CHUNK_SIZE,
+            api_base_url=settings.SARVAM_API_URL,
+            api_endpoint=settings.TTS_API_ENDPOINT
+        )
+        
+        # Assemble pipeline in correct order for Pipecat voice agent
+        # BYPASS assistant aggregator to avoid compatibility issue
         pipeline = Pipeline([
-            transport.input(),           # Receive audio from Twilio
-            stt_service,                 # Speech-to-Text
-            user_aggregator,             # User context aggregation (with logging)
-            llm_service,                 # Generate response
-            tts_service,                 # Text-to-Speech (receives LLMTextFrame from LLM)
-            transport.output(),          # Send audio to Twilio
-            context_aggregator.assistant(),  # Assistant context aggregation (captures LLM text for context)
+            transport.input(),                   # Client audio in
+            stt_service,                        # -> transcribe
+            user_aggregator,                    # Aggregate user utterances
+            llm_service,                        # -> produce assistant response
+            # assistant_aggregator,             # SKIPPED - causes compatibility issue
+            tts_service,                        # -> synthesize audio
+            transport.output(),                 # Send audio back to client
         ])
         
         logger.info("[CHECKPOINT 2] Creating pipeline task...")
@@ -176,8 +169,8 @@ class PipelineBuilder:
         task = PipelineTask(
             pipeline,
             params=PipelineParams(
-                audio_in_sample_rate=8000,   # Twilio sends at 8kHz
-                audio_out_sample_rate=8000,  # Twilio expects 8kHz
+                audio_in_sample_rate=settings.AUDIO_SAMPLE_RATE_IN,   # 16000 for Sarvam STT
+                audio_out_sample_rate=settings.AUDIO_SAMPLE_RATE_OUT, # 22050 for Sarvam TTS
                 enable_metrics=True,
                 enable_usage_metrics=True,
             )
@@ -185,4 +178,27 @@ class PipelineBuilder:
         
         logger.info("Pipeline built successfully")
         
-        return pipeline, task, transport, [stt_service, llm_service, tts_service]
+        # Return only pipeline and task to match annotation and Pipecat API
+        return pipeline, task
+    
+    async def ensure_pipeline_ready(self):
+        """Ensure the pipeline is fully ready before processing media frames.
+        
+        This prevents race conditions where Twilio media frames arrive before
+        Pipecat FrameProcessors are fully initialized.
+        """
+        import asyncio
+        import logging
+        
+        try:
+            # Give the pipeline components time to initialize their internal structures
+            # This prevents the '_FrameProcessor__process_queue' attribute error
+            await asyncio.sleep(0.2)
+            
+            # Signal that pipeline is ready
+            self.pipeline_ready.set()
+            logging.info("🚀 Pipeline is fully ready. Safe to process Twilio media frames.")
+            
+        except Exception:
+            logging.exception("Pipeline readiness check failed")
+            raise

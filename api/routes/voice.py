@@ -54,10 +54,11 @@ async def handle_incoming_call(
     
     response.append(gather)
     
-    # Fallback if no input - default to English
-    response.say("No input received.", voice="Polly.Aditi", language="en-IN")
-    response.say("Teluguku maarutundi.", voice="Polly.Aditi", language="en-IN")
-    response.redirect(f"{settings.SERVER_URL}/voice/language-selected?Digits=3")
+    # Fallback if no input - repeat language selection
+    response.say("No input received. Please select your language.", voice="Polly.Aditi", language="en-IN")
+    response.say("कृपया अपनी भाषा चुनें।", voice="Polly.Aditi", language="hi-IN")
+    response.say("దయచేసి మీ భాషను ఎంచుకోండి।", voice="Polly.Aditi", language="te-IN")
+    response.redirect(f"{settings.SERVER_URL}/voice/incoming")
     
     logger.info(f"Sent language selection menu for call {CallSid}")
     
@@ -129,7 +130,7 @@ async def handle_outbound_call(
     request: Request,
     CallSid: str = Form(...),
     To: str = Form(...),
-    language: str = "en-IN"
+    language: str = Form(...)
 ):
     """
     Handle outbound call - directly connect to WebSocket.

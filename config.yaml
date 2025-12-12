@@ -9,7 +9,9 @@ server:
 # STT Configuration
 stt:
   model: saarika:v2.5
-  sample_rate: 16000
+  sample_rate: 16000  # Pipecat converts Twilio's 8kHz mulaw to 16kHz PCM
+  strict_language_mode: true  # Reject transcriptions that don't match selected language
+  retry_delay: 0.5  # Delay between retry attempts in seconds
 
 # LLM Configuration
 llm:
@@ -19,12 +21,17 @@ llm:
   top_p: 0.85
   frequency_penalty: 0.3
   presence_penalty: 0.2
+  retry_count: 2  # Number of retry attempts for API calls
+  timeout: 15  # API timeout in seconds
+  api_endpoint: "/v1/chat/completions"  # LLM API endpoint path
 
 # TTS Configuration
 tts:
-  model: bulbul:v2
-  voice: anushka
+  voice: bulbul:v2  # Sarvam TTS model (bulbul:v2 or bulbul:v3-beta)
   sample_rate: 8000
+  frame_duration_ms: 20  # Audio chunk duration for streaming
+  fallback_chunk_size: 1024  # Fallback chunk size if calculation fails
+  api_endpoint: "/text-to-speech"  # TTS API endpoint path
 
 # Audio Configuration
 audio:
@@ -32,23 +39,21 @@ audio:
   sample_rate_in: 8000
   sample_rate_out: 8000
 
-# VAD Configuration
+# VAD Configuration (disabled - let STT handle audio buffering)
 vad:
-  enabled: true
-  confidence: 0.7
+  enabled: false
+  confidence: 0.85
   stop_secs: 1.5
-  start_secs: 0.3
-  min_volume: 0.6
+  start_secs: 0.4
+  min_volume: 0.75
 
 # Pipeline Configuration
 pipeline:
-  aggregation_timeout: 0.8
+  aggregation_timeout: 2.0  # Increased timeout to ensure transcriptions are aggregated
   max_silence_duration: 300.0
 
 # Feature Flags
 features:
-  save_debug_audio: false
-  debug_audio_dir: debug_audio
   enable_analytics: true
 
 # Logging
@@ -64,6 +69,8 @@ rate_limit:
 # Knowledge Base
 knowledge:
   base_path: knowledge/Querie.json
+  search_limit: 3  # Number of relevant entries to retrieve
+  min_score: 10.0  # Minimum relevance score for search results
 
 # Supported Languages
 languages:

@@ -82,6 +82,14 @@ class Settings(BaseSettings):
         default=yaml_config.get("stt", {}).get("sample_rate", 16000),
         description="STT sample rate"
     )
+    STT_STRICT_LANGUAGE_MODE: bool = Field(
+        default=yaml_config.get("stt", {}).get("strict_language_mode", True),
+        description="Reject transcriptions that don't match selected language"
+    )
+    STT_RETRY_DELAY: float = Field(
+        default=yaml_config.get("stt", {}).get("retry_delay", 0.5),
+        description="Delay between STT retry attempts in seconds"
+    )
     
     # LLM Configuration
     LLM_MODEL: str = Field(
@@ -108,20 +116,44 @@ class Settings(BaseSettings):
         default=yaml_config.get("llm", {}).get("presence_penalty", 0.2),
         description="LLM presence penalty"
     )
+    LLM_RETRY_COUNT: int = Field(
+        default=yaml_config.get("llm", {}).get("retry_count", 2),
+        description="Number of retry attempts for LLM API calls"
+    )
+    LLM_TIMEOUT: int = Field(
+        default=yaml_config.get("llm", {}).get("timeout", 15),
+        description="LLM API timeout in seconds"
+    )
+    LLM_API_ENDPOINT: str = Field(
+        default=yaml_config.get("llm", {}).get("api_endpoint", "/v1/chat/completions"),
+        description="LLM API endpoint path"
+    )
     
     # TTS Configuration
-    TTS_MODEL: str = Field(
-        default=yaml_config.get("tts", {}).get("model", "bulbul:v2"),
-        description="TTS model"
-    )
     TTS_VOICE: str = Field(
-        default=yaml_config.get("tts", {}).get("voice", "anushka"),
-        description="TTS voice"
+        default=yaml_config.get("tts", {}).get("voice", "bulbul:v2"),
+        description="TTS voice/model (bulbul:v2 or bulbul:v3-beta)"
     )
     TTS_SAMPLE_RATE: int = Field(
         default=yaml_config.get("tts", {}).get("sample_rate", 8000),
         description="TTS sample rate"
     )
+    TTS_FRAME_DURATION_MS: int = Field(
+        default=yaml_config.get("tts", {}).get("frame_duration_ms", 20),
+        description="TTS audio chunk duration in milliseconds"
+    )
+    TTS_FALLBACK_CHUNK_SIZE: int = Field(
+        default=yaml_config.get("tts", {}).get("fallback_chunk_size", 1024),
+        description="Fallback chunk size if calculation fails"
+    )
+    TTS_API_ENDPOINT: str = Field(
+        default=yaml_config.get("tts", {}).get("api_endpoint", "/text-to-speech"),
+        description="TTS API endpoint path"
+    )
+    # For backward compatibility, TTS_MODEL points to the same value
+    @property
+    def TTS_MODEL(self) -> str:
+        return self.TTS_VOICE
     
     # Audio Configuration
     AUDIO_CHUNK_SIZE: int = Field(
@@ -170,14 +202,6 @@ class Settings(BaseSettings):
     )
     
     # Feature Flags
-    SAVE_DEBUG_AUDIO: bool = Field(
-        default=yaml_config.get("features", {}).get("save_debug_audio", False),
-        description="Save debug audio files"
-    )
-    DEBUG_AUDIO_DIR: str = Field(
-        default=yaml_config.get("features", {}).get("debug_audio_dir", "debug_audio"),
-        description="Debug audio directory"
-    )
     ENABLE_ANALYTICS: bool = Field(
         default=yaml_config.get("features", {}).get("enable_analytics", True),
         description="Enable analytics"
@@ -193,6 +217,14 @@ class Settings(BaseSettings):
     KNOWLEDGE_BASE_PATH: str = Field(
         default=yaml_config.get("knowledge", {}).get("base_path", "knowledge/Querie.json"),
         description="Knowledge base file path"
+    )
+    KNOWLEDGE_SEARCH_LIMIT: int = Field(
+        default=yaml_config.get("knowledge", {}).get("search_limit", 3),
+        description="Number of relevant entries to retrieve from knowledge base"
+    )
+    KNOWLEDGE_MIN_SCORE: float = Field(
+        default=yaml_config.get("knowledge", {}).get("min_score", 10.0),
+        description="Minimum relevance score for knowledge base search results"
     )
     
     # Supported Languages

@@ -194,7 +194,7 @@ TextFrame + LLMFullResponseEndFrame
    ↓
 LLMAssistantResponseAggregator
    ↓
-SarvamTTSService
+SarvamTTSProcessor
    ↓
 TTSAudioRawFrame (8kHz PCM)
    ↓

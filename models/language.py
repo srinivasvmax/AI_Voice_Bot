@@ -31,4 +31,6 @@ LANGUAGE_MAP: Dict[str, Language] = {
 
 def get_language_by_digit(digit: str) -> Language:
     """Get language configuration by DTMF digit."""
-    return LANGUAGE_MAP.get(digit, LANGUAGE_MAP["3"])  # Default to English
+    if digit not in LANGUAGE_MAP:
+        raise ValueError(f"Invalid language digit: {digit}. Must be 1, 2, or 3.")
+    return LANGUAGE_MAP[digit]

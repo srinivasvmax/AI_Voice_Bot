@@ -63,7 +63,7 @@ class SarvamAI:
     async def speech_to_text(
         self,
         audio_bytes: bytes,
-        language: str = "en-IN",
+        language: str = None,
         retry_count: int = 2,
         timeout: int = 15
     ) -> Tuple[str, str]:
@@ -107,7 +107,7 @@ class SarvamAI:
                         data.add_field('language_code', lang)
                         data.add_field('model', settings.STT_MODEL)
                         
-                        logger.debug(f"📤 Sending STT request for {lang}: {len(audio_bytes)} bytes")
+                        # logger.debug(f"📤 Sending STT request for {lang}: {len(audio_bytes)} bytes")  # Disabled to reduce log spam
                         
                         async with session.post(
                             self.stt_url,
@@ -165,7 +165,8 @@ class SarvamAI:
                     logger.warning(f"⚠️ STT: No speech detected in any language (tried: {', '.join(languages)})")
                     if attempt < retry_count - 1:
                         logger.info(f"🔄 Retrying STT...")
-                        await asyncio.sleep(0.5)
+                        from app.config import settings
+                        await asyncio.sleep(settings.STT_RETRY_DELAY)
                         continue
                     
                     self.stats["stt_failures"] += 1
@@ -181,10 +182,10 @@ class SarvamAI:
                     continue
                 
                 self.stats["stt_failures"] += 1
-                return "", language or "en-IN"
+                return "", language or "unknown"
         
         self.stats["stt_failures"] += 1
-        return "", language or "en-IN"
+        return "", language or "unknown"
     
     async def chat(
         self,
@@ -203,6 +204,7 @@ class SarvamAI:
         Returns:
             Generated response text
         """
+        logger.info(f"🤖 [SARVAM API] Starting chat request with {len(messages)} messages")
         self.stats["llm_calls"] += 1
         
         # Fallback responses based on language
@@ -225,6 +227,7 @@ class SarvamAI:
         
         for attempt in range(retry_count):
             try:
+                logger.info(f"🤖 [SARVAM API] Attempt {attempt + 1}/{retry_count}")
                 session = await self.get_session()
                 
                 payload = {
@@ -237,11 +240,19 @@ class SarvamAI:
                     "presence_penalty": settings.LLM_PRESENCE_PENALTY
                 }
                 
+                # logger.info(f"🤖 [SARVAM API] Payload: {payload}")  # Disabled - too verbose
+                logger.info(f"🤖 [SARVAM API] URL: {self.llm_url}")
+                
                 # Use Authorization header for LLM endpoint
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 }
+                
+                # Log with partial key for debugging (disabled to reduce logs)
+                # logger.info(f"🤖 [SARVAM API] Using API key: {self.api_key[:10]}...")
+                
+                logger.info(f"🤖 [SARVAM API] Making POST request...")
                 
                 async with session.post(
                     self.llm_url,
@@ -249,15 +260,18 @@ class SarvamAI:
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=timeout)
                 ) as response:
+                    logger.info(f"🤖 [SARVAM API] Response status: {response.status}")
+                    
                     if response.status == 200:
                         result = await response.json()
+                        # logger.info(f"🤖 [SARVAM API] Full response: {result}")  # Disabled - too verbose
                         text = result["choices"][0]["message"]["content"]
-                        logger.info(f"LLM: {text}")
+                        logger.info(f"✅ [SARVAM API] LLM response: {text}")
                         self.stats["llm_success"] += 1
                         return text
                     else:
                         error_text = await response.text()
-                        logger.error(f"LLM error {response.status}: {error_text}")
+                        logger.error(f"❌ [SARVAM API] LLM error {response.status}: {error_text}")
                         
                         if attempt < retry_count - 1:
                             logger.info(f"🔄 Retrying LLM...")
@@ -301,7 +315,7 @@ class SarvamAI:
     async def text_to_speech(
         self,
         text: str,
-        language: str = "hi-IN",
+        language: str,
         retry_count: int = 2,
         timeout: int = 20
     ) -> bytes:
@@ -326,11 +340,11 @@ class SarvamAI:
                 payload = {
                     "inputs": [text],
                     "target_language_code": language,
-                    "speaker": "anushka",  # Valid speaker from API
+                    "speaker": settings.TTS_VOICE,
                     "pitch": 0,
                     "pace": 1.0,
                     "loudness": 1.5,
-                    "speech_sample_rate": 8000,  # 8kHz for Twilio
+                    "speech_sample_rate": settings.TTS_SAMPLE_RATE,
                     "enable_preprocessing": True,
                     "model": settings.TTS_MODEL
                 }

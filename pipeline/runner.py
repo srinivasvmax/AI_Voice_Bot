@@ -11,11 +11,61 @@ from app.constants import EVENT_CALL_STARTED, EVENT_CALL_ENDED
 from app.middleware import track_call_started, track_call_ended
 
 
+async def create_bot_pipeline(
+    websocket,
+    stream_sid: str,
+    call_sid: str,
+    language: str,
+    system_prompt: Optional[str] = None
+):
+    """
+    Create the voice bot pipeline and return builder for readiness control.
+    
+    Args:
+        websocket: FastAPI WebSocket connection
+        stream_sid: Twilio stream SID
+        call_sid: Twilio call SID
+        language: Language code
+        system_prompt: Custom system prompt (optional)
+        
+    Returns:
+        Tuple of (builder, runner, task, session)
+    """
+    from pipeline.builder import PipelineBuilder
+    from pipecat.pipeline.runner import PipelineRunner
+    from models.call_session import CallSession, CallState
+    from datetime import datetime
+    
+    # Create session
+    session = CallSession(
+        call_sid=call_sid,
+        stream_sid=stream_sid,
+        language=language,
+        state=CallState.ACTIVE,
+        started_at=datetime.utcnow()
+    )
+    
+    # Create pipeline builder
+    builder = PipelineBuilder(
+        websocket=websocket,
+        stream_sid=stream_sid,
+        language=language,
+        system_prompt=system_prompt
+    )
+    
+    pipeline, task = builder.build()
+    
+    # Create runner
+    runner = PipelineRunner()
+    
+    return builder, runner, task, session
+
+
 async def run_bot(
     websocket,
     stream_sid: str,
     call_sid: str,
-    language: str = "en-IN",
+    language: str,
     system_prompt: Optional[str] = None
 ) -> CallSession:
     """
@@ -47,6 +97,8 @@ async def run_bot(
     start_time = datetime.utcnow()
     track_call_started(language)
     
+    # Services cleanup is handled by Pipecat pipeline lifecycle
+    
     try:
         # Build pipeline with real Stream SID from Twilio
         builder = PipelineBuilder(
@@ -56,14 +108,20 @@ async def run_bot(
             system_prompt=system_prompt
         )
         
-        pipeline, task, transport, services = builder.build()
+        pipeline, task = builder.build()
         
         logger.info("[CHECKPOINT 3] Creating pipeline runner...")
         
         # Create runner
         runner = PipelineRunner()
         
-        logger.info("[CHECKPOINT 4] Starting pipeline runner...")
+        logger.info("[CHECKPOINT 4] Ensuring pipeline readiness...")
+        
+        # Ensure pipeline is ready before processing media frames
+        import asyncio
+        asyncio.create_task(builder.ensure_pipeline_ready())
+        
+        logger.info("[CHECKPOINT 5] Starting pipeline runner...")
         
         # Run pipeline (blocks until call ends)
         await runner.run(task)
@@ -91,13 +149,8 @@ async def run_bot(
         track_call_ended(language, "error")
         
     finally:
-        # Cleanup services
-        logger.info("Cleaning up services...")
-        for service in services:
-            try:
-                await service.cleanup()
-            except Exception as e:
-                logger.error(f"Cleanup error for {service.__class__.__name__}: {e}")
+        # Services cleanup is handled by Pipecat pipeline lifecycle
+        logger.info("Pipeline cleanup handled by Pipecat")
         
         # Log analytics
         if session.ended_at:

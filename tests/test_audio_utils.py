@@ -3,8 +3,8 @@ import pytest
 from utils.audio_utils import (
     mulaw_to_pcm,
     pcm_to_mulaw,
-    resample_audio,
-    resample_to_8khz_mono
+    mulaw_to_wav,
+    wav_to_mulaw
 )
 
 
@@ -34,26 +34,27 @@ def test_pcm_to_mulaw():
     assert len(mulaw_data) < len(pcm_data)
 
 
-def test_resample_audio():
-    """Test audio resampling."""
-    # Create sample PCM data
-    pcm_data = b'\x00\x00' * 1600  # 1600 samples at 16kHz = 0.1s
+def test_mulaw_to_wav():
+    """Test mulaw to WAV conversion."""
+    # Create sample mulaw data
+    mulaw_data = b'\xff' * 160
     
-    # Resample from 16kHz to 8kHz
-    resampled = resample_audio(pcm_data, from_rate=16000, to_rate=8000)
-    
-    # Check output
-    assert isinstance(resampled, bytes)
-    assert len(resampled) < len(pcm_data)
-
-
-def test_resample_to_8khz_mono():
-    """Test forced resampling to 8kHz mono."""
-    # Create sample PCM data
-    pcm_data = b'\x00\x00' * 1600
-    
-    # Resample to 8kHz mono
-    resampled = resample_to_8khz_mono(pcm_data, source_rate=16000, num_channels=1)
+    # Convert to WAV
+    wav_data = mulaw_to_wav(mulaw_data, target_rate=16000)
     
     # Check output
-    assert isinstance(resampled, bytes)
+    assert isinstance(wav_data, bytes)
+    assert len(wav_data) > len(mulaw_data)
+
+
+def test_wav_to_mulaw():
+    """Test WAV to mulaw conversion."""
+    # Create a simple WAV file (this is a minimal test)
+    mulaw_data = b'\xff' * 160
+    wav_data = mulaw_to_wav(mulaw_data)
+    
+    # Convert back to mulaw
+    result_mulaw = wav_to_mulaw(wav_data)
+    
+    # Check output
+    assert isinstance(result_mulaw, bytes)

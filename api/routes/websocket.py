@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from loguru import logger
 
-from pipeline.runner import run_bot
+from pipeline.runner import run_bot, create_bot_pipeline
 from api.dependencies import get_session, store_session, remove_session
 from models.call_session import CallState
 
@@ -23,17 +23,18 @@ async def test_media_stream():
 @router.websocket("/media-stream")
 async def handle_media_stream_fallback(websocket: WebSocket):
     """
-    Fallback route for backward compatibility.
-    Redirects to default English language.
+    Fallback route - language must be selected first.
     """
-    logger.warning("⚠️ WebSocket connected without language parameter, using default en-IN")
-    await handle_media_stream(websocket, "en-IN")
+    await websocket.accept()
+    logger.error("❌ WebSocket connected without language parameter - language selection required")
+    await websocket.send_text('{"error": "Language selection required. Please select language first."}')
+    await websocket.close()
 
 
 @router.websocket("/media-stream/{language}")
 async def handle_media_stream(
     websocket: WebSocket,
-    language: str = "en-IN"
+    language: str
 ):
     """
     Handle Twilio media stream WebSocket connection.
@@ -119,13 +120,41 @@ async def handle_media_stream(
         logger.info(f"🤖 [CHECKPOINT 0] Starting bot with stream_sid={stream_sid}, call_sid={call_sid}")
         logger.info("=" * 80)
         
-        # Run the bot pipeline with the real Stream SID and Call SID from Twilio
-        session = await run_bot(
+        # Create pipeline and wait for readiness before processing media frames
+        from pipeline.runner import create_bot_pipeline
+        import asyncio
+        
+        logger.info("🔧 Creating pipeline components...")
+        builder, runner, task, session = await create_bot_pipeline(
             websocket=websocket,
             stream_sid=stream_sid,  # Real Stream SID extracted from Twilio's 'start' message
             call_sid=call_sid,      # Real Call SID extracted from Twilio's 'start' message
             language=selected_language
         )
+        
+        logger.info("⏳ Ensuring pipeline readiness before processing media frames...")
+        
+        # Start readiness check asynchronously
+        asyncio.create_task(builder.ensure_pipeline_ready())
+        
+        # Wait for pipeline to be ready before allowing media frame processing
+        try:
+            await asyncio.wait_for(builder.pipeline_ready.wait(), timeout=5.0)
+            logger.info("✅ Pipeline ready - safe to process Twilio media frames")
+        except asyncio.TimeoutError:
+            logger.error("❌ Pipeline not ready in time - cannot process Twilio media")
+            raise
+        
+        # Now run the pipeline (this will process media frames)
+        logger.info("🚀 Starting pipeline runner...")
+        await runner.run(task)
+        
+        # Update session state
+        from datetime import datetime
+        from utils.analytics import track_call_ended
+        session.state = CallState.ENDED
+        session.ended_at = datetime.utcnow()
+        track_call_ended(selected_language, "completed")
         
         # Store final session
         await store_session(session)

@@ -1,10 +1,10 @@
 # Web Framework
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-websockets==12.0
+websockets>=13.0
 
 # Pipecat Framework
-pipecat-ai==0.0.97
+pipecat-ai[sarvam]==0.0.97
 
 # Twilio
 twilio==8.11.0

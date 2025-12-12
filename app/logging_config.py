@@ -36,11 +36,11 @@ def setup_logging():
         enqueue=True
     )
     
-    # STT service log (overwrite on each run)
+    # STT service log (overwrite on each run) - INFO level to reduce audio chunk spam
     logger.add(
         log_dir / "stt.log",
         format=file_format,
-        level="DEBUG",
+        level="INFO",  # Changed from DEBUG to INFO to reduce audio chunk logs
         mode="w",  # Overwrite mode
         filter=lambda record: "stt" in record["name"].lower() or "[STT]" in record["message"],
         enqueue=True

@@ -39,7 +39,7 @@
 │  │  • SarvamSTTService (services/stt/)             │    │
 │  │  • LLMContextAggregatorPair (aggregators/)      │    │
 │  │  • SarvamLLMService (services/llm/)             │    │
-│  │  • SarvamTTSService (services/tts/)             │    │
+│  │  • SarvamTTSProcessor (services/tts/)           │    │
 │  │  • Enhanced RAG search (knowledge/)             │    │
 │  └─────────────────────────────────────────────────┘    │
 └────────────────────┬────────────────────────────────────┘

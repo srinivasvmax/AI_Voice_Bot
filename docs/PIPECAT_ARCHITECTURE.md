@@ -30,7 +30,7 @@ This document explains how we've properly implemented the Pipecat framework for 
 │  5. LLMAssistantResponseAggregator                          │
 │     ↓ (Updates shared context)                              │
 │                                                              │
-│  6. SarvamTTSService (FrameProcessor)                       │
+│  6. SarvamTTSProcessor (FrameProcessor)                     │
 │     ↓ (TTSAudioRawFrame @ 8kHz PCM)                        │
 │                                                              │
 │  7. FastAPIWebsocketTransport.output()                      │
@@ -271,7 +271,7 @@ class SarvamLLMService(FrameProcessor):
 ### TTS Service Implementation
 
 ```python
-class SarvamTTSService(FrameProcessor):
+class SarvamTTSProcessor(FrameProcessor):
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         # Call super first
         await super().process_frame(frame, direction)
