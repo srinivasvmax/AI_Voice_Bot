@@ -119,6 +119,7 @@ async def handle_language_selection(
     # Log the TwiML response for debugging
     twiml_xml = str(response)
     logger.info(f"📋 TwiML Response:\n{twiml_xml}")
+    logger.info(f"🔗 Final WebSocket URL in TwiML: {ws_url}/media-stream/{lang_code}")
     
     logger.info(f"Connecting call {CallSid} to WebSocket with language {language.code}")
     

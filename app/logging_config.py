@@ -40,9 +40,14 @@ def setup_logging():
     logger.add(
         log_dir / "stt.log",
         format=file_format,
-        level="INFO",  # Changed from DEBUG to INFO to reduce audio chunk logs
+        level="INFO",
         mode="w",  # Overwrite mode
-        filter=lambda record: "stt" in record["name"].lower() or "[STT]" in record["message"],
+        filter=lambda record: (
+            "stt" in record["name"].lower() or 
+            "[STT]" in record["message"] or
+            "SarvamSTTService" in record["message"] or
+            "🎤" in record["message"]
+        ),
         enqueue=True
     )
     
@@ -52,7 +57,12 @@ def setup_logging():
         format=file_format,
         level="DEBUG",
         mode="w",  # Overwrite mode
-        filter=lambda record: "llm" in record["name"].lower() or "[LLM]" in record["message"],
+        filter=lambda record: (
+            "llm" in record["name"].lower() or 
+            "[LLM]" in record["message"] or
+            "SarvamLLMService" in record["message"] or
+            "🤖" in record["message"]
+        ),
         enqueue=True
     )
     
@@ -62,7 +72,12 @@ def setup_logging():
         format=file_format,
         level="DEBUG",
         mode="w",  # Overwrite mode
-        filter=lambda record: "tts" in record["name"].lower() or "[TTS]" in record["message"],
+        filter=lambda record: (
+            "tts" in record["name"].lower() or 
+            "[TTS]" in record["message"] or
+            "SarvamTTSService" in record["message"] or
+            "🔊" in record["message"]
+        ),
         enqueue=True
     )
     
@@ -72,7 +87,13 @@ def setup_logging():
         format=file_format,
         level="DEBUG",
         mode="w",  # Overwrite mode
-        filter=lambda record: "pipeline" in record["name"].lower() or "CHECKPOINT" in record["message"],
+        filter=lambda record: (
+            "pipeline" in record["name"].lower() or 
+            "CHECKPOINT" in record["message"] or
+            "PipelineBuilder" in record["message"] or
+            "🚀" in record["message"] or
+            "✅" in record["message"]
+        ),
         enqueue=True
     )
     
@@ -82,7 +103,13 @@ def setup_logging():
         format=file_format,
         level="DEBUG",
         mode="w",  # Overwrite mode
-        filter=lambda record: "api" in record["name"].lower() or "websocket" in record["name"].lower(),
+        filter=lambda record: (
+            "api" in record["name"].lower() or 
+            "websocket" in record["name"].lower() or
+            "🔌" in record["message"] or
+            "📞" in record["message"] or
+            "🌐" in record["message"]
+        ),
         enqueue=True
     )
     

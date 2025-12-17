@@ -521,6 +521,11 @@ class LLMService(AIService):
             task.add_done_callback(self._function_call_task_finished)
     
     async def _run_sequential_function_calls(self, runner_items: Sequence[FunctionCallRunnerItem]):
+        # PATCH: Ensure sequential runner task exists before enqueueing
+        # Defensive check similar to frame_processor.py fix
+        if not self._sequential_runner_task:
+            await self._create_sequential_runner_task()
+        
         # Enqueue all function calls for background execution.
         for runner_item in runner_items:
             await self._sequential_runner_queue.put(runner_item)

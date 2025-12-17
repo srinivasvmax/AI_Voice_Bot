@@ -1,70 +1,26 @@
-# Voice AI Bot
+# Voice AI Bot - Production Ready
 
-> **Production-ready multilingual voice AI bot powered by Twilio, Pipecat, and Sarvam AI**
+> **Enterprise-grade multilingual voice AI bot powered by Twilio, Pipecat, and Sarvam AI**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com)
-[![Pipecat](https://img.shields.io/badge/Pipecat-0.0.97-orange.svg)](https://github.com/pipecat-ai/pipecat)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
+[![Pipecat](https://img.shields.io/badge/Pipecat-0.0.95-orange.svg)](https://github.com/pipecat-ai/pipecat)
 [![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-Latest-purple.svg)](https://sarvam.ai)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 🎯 Overview
 
-A sophisticated voice AI bot that enables natural conversations over phone calls with support for multiple Indian languages. Built with modern async Python architecture using Pipecat framework and production-ready deployment capabilities.
+A production-ready voice AI bot enabling natural phone conversations in multiple Indian languages. Built with modern async Python architecture using the Pipecat framework with enterprise-grade reliability and monitoring.
 
 ### ✨ Key Features
 
 - **🌐 Multilingual Support**: Telugu, Hindi, English with native Sarvam AI processing
-- **⚡ Ultra-Low Latency**: Optimized pipeline with VAD-based audio buffering
-- **🎙️ Advanced Voice Processing**: Voice Activity Detection, interruption handling, audio format conversion
-- **🧠 Enhanced RAG Knowledge Base**: Contextual responses with semantic search
-- **📊 Production Ready**: Docker support, Prometheus metrics, rate limiting, comprehensive logging
-- **🔧 Modular Pipecat Architecture**: Clean frame-based processing, easily extensible
-- **📞 Twilio Integration**: WebSocket streaming, TwiML webhooks, multi-language IVR
-
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    A[📞 User Phone] --> B[☁️ Twilio Platform]
-    B --> C[🚀 FastAPI Server]
-    C --> D[🔄 Pipecat Pipeline]
-    
-    D --> E[🎤 VAD Processor]
-    E --> F[🎯 STT Service]
-    F --> G[📝 User Context Aggregator]
-    G --> H[🤖 LLM Service]
-    H --> I[🔊 TTS Service]
-    I --> J[📡 WebSocket Transport]
-    J --> B
-    
-    F --> K[🧠 Sarvam STT API]
-    H --> L[🧠 Sarvam LLM API]
-    I --> M[🧠 Sarvam TTS API]
-    H --> N[📚 Enhanced RAG Search]
-    N --> O[💾 Knowledge Base JSON]
-    
-    subgraph "🔧 Middleware Layer"
-        P[📊 Metrics]
-        Q[🛡️ Rate Limiting]
-        R[📋 Logging]
-    end
-    
-    C --> P
-    C --> Q
-    C --> R
-```
-
-### Core Components
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **📞 Telephony** | Twilio Voice API + WebSocket | Call handling, real-time audio streaming |
-| **🚀 Web Framework** | FastAPI + Uvicorn | Async HTTP server, webhook endpoints |
-| **🔄 Voice Pipeline** | Pipecat Framework | Frame-based audio processing orchestration |
-| **🧠 AI Services** | Sarvam AI Suite | STT (Saarika), LLM (Sarvam-M), TTS (Bulbul) |
-| **🎤 Audio Processing** | VAD + Custom Utils | Voice activity detection, format conversion |
-| **📚 Knowledge Base** | Enhanced RAG + JSON | Semantic search with contextual responses |
-| **📊 Monitoring** | Prometheus + Loguru | Metrics collection and structured logging |
+- **⚡ Ultra-Low Latency**: Optimized pipeline with <1s response time
+- **🎙️ Advanced Voice Processing**: VAD, interruption handling, real-time streaming
+- **🧠 RAG-Enhanced Responses**: Contextual knowledge base with semantic search
+- **📊 Production Ready**: Docker, Prometheus metrics, rate limiting, structured logging
+- **🔧 Modular Architecture**: Clean frame-based processing, easily extensible
+- **📞 Twilio Integration**: WebSocket streaming, multi-language IVR
 
 ## 🚀 Quick Start
 
@@ -77,61 +33,101 @@ graph TB
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd voice-ai-bot
-   ```
+```bash
+# Clone repository
+git clone <repository-url>
+cd voice-ai-bot
 
-2. **Set up environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-4. **Run the application**
-   ```bash
-   python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Run application
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 ### Docker Deployment
 
 ```bash
-# Build and run with Docker Compose
 docker-compose up -d
-
-# Check logs
 docker-compose logs -f
 ```
 
+## 📚 Documentation
+
+### 🚀 Quick Links
+- **[Production Ready Status](docs/PRODUCTION_READY.md)** - System status and readiness verification
+
+### Getting Started
+- [Project Overview](docs/PROJECT_OVERVIEW.md) - Complete project overview and features
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
+- [Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md) - Pre-deployment verification
+
+### Architecture & Design
+- [System Architecture](docs/ARCHITECTURE.md) - High-level design and components
+- [Pipecat Architecture](docs/PIPECAT_ARCHITECTURE.md) - Frame processing pipeline details
+- [Audio Conversion](docs/AUDIO_CONVERSION.md) - Audio format handling
+
+### Operations & Maintenance
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Language Selection](docs/LANGUAGE_SELECTION.md) - Multi-language IVR setup
+
+### Advanced Topics
+- [Pipecat Patches](docs/PIPECAT_PATCHES.md) - Internal library modifications for upstream PRs
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐
+│ User Phone  │
+└──────┬──────┘
+       │
+┌──────▼──────────┐
+│ Twilio Platform │
+└──────┬──────────┘
+       │ WebSocket
+┌──────▼──────────┐
+│  FastAPI Server │
+│  ┌───────────┐  │
+│  │ Pipecat   │  │
+│  │ Pipeline  │  │
+│  └───────────┘  │
+└──────┬──────────┘
+       │
+┌──────▼──────────┐
+│  Sarvam AI APIs │
+│  • STT (Saarika)│
+│  • LLM (Sarvam-M│
+│  • TTS (Bulbul) │
+└─────────────────┘
+```
+
+**Pipeline Flow**: Audio → STT → Context Aggregator → LLM → TTS → Audio
+
+See [Architecture Documentation](docs/ARCHITECTURE.md) for detailed diagrams.
+
 ## ⚙️ Configuration
 
-### Environment Variables (.env)
+### Minimal .env Setup
 
 ```env
-# Server Configuration
 SERVER_URL=https://your-domain.com
-
-# Twilio Credentials
 TWILIO_ACCOUNT_SID=your_account_sid
 TWILIO_AUTH_TOKEN=your_auth_token
 TWILIO_PHONE_NUMBER=+1234567890
-
-# Sarvam AI
 SARVAM_API_KEY=your_api_key
 ```
 
-### Application Settings (config.yaml)
+### config.yaml Highlights
 
 ```yaml
-# AI Models
 stt:
   model: saarika:v2.5
   sample_rate: 16000
@@ -142,35 +138,48 @@ llm:
   temperature: 0.7
 
 tts:
-  model: bulbul:v2
-  voice: anushka
+  voice: bulbul:v2
   sample_rate: 8000
-
-# Voice Activity Detection
-vad:
-  enabled: true
-  confidence: 0.7
-  stop_secs: 1.5
-  start_secs: 0.3
 ```
+
+See [Configuration Guide](docs/CONFIGURATION.md) for all options.
 
 ## 📞 Usage
 
 ### Making a Call
 
-1. **Call the Twilio number**
-2. **Select language** (1=Telugu, 2=Hindi, 3=English)
-3. **Start conversation** - the AI will respond naturally
+1. Call your Twilio number
+2. Select language (1=Telugu, 2=Hindi, 3=English)
+3. Start natural conversation
 
 ### API Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/voice/incoming` | POST | Initial call webhook |
-| `/voice/language-selected` | POST | Language selection handler |
-| `/media-stream` | WebSocket | Real-time audio streaming |
+| `/voice/language-selected` | POST | Language selection |
+| `/media-stream/{language}` | WebSocket | Audio streaming |
 | `/health` | GET | Health check |
-| `/analytics` | GET | Call analytics |
+| `/metrics` | GET | Prometheus metrics |
+
+## 🧪 Testing
+
+```bash
+# Run test call
+python test_call.py
+
+# Run unit tests
+pytest tests/
+
+# Run integration tests
+pytest tests/integration/
+```
+
+## 📊 Monitoring
+
+- **Metrics**: Prometheus endpoint at `/metrics`
+- **Logs**: Structured JSON logs in `logs/` directory
+- **Health**: `/health` endpoint for uptime monitoring
 
 ## 🔧 Development
 
@@ -179,20 +188,50 @@ vad:
 ```
 voice-ai-bot/
 ├── app/                    # Application core
-│   ├── main.py            # FastAPI application
-│   ├── config.py          # Configuration management
-│   └── constants.py       # Global constants
-├── api/                    # API layer
-│   └── routes/            # Route handlers
-├── services/               # AI services
-│   ├── stt/               # Speech-to-Text
-│   ├── llm/               # Language Model
-│   └── tts/               # Text-to-Speech
+├── api/                    # API routes
+├── services/               # AI services (STT, LLM, TTS)
 ├── pipeline/               # Pipecat pipeline
 ├── transport/              # WebSocket transport
-├── knowledge/              # Knowledge base
-├── utils/                  # Utilities
-├── models/                 # Domain models
+├── knowledge/              # RAG knowledge base
 ├── docs/                   # Documentation
 └── tests/                  # Test suite
 ```
+
+### Adding New Features
+
+1. Review [Development Guide](docs/DEVELOPMENT.md)
+2. Follow [Contributing Guidelines](docs/CONTRIBUTING.md)
+3. Submit pull request
+
+## 🐛 Troubleshooting
+
+Common issues and solutions:
+
+- **No audio on calls**: Check [Troubleshooting Guide](docs/TROUBLESHOOTING.md#no-audio)
+- **High latency**: See [Performance Tuning](docs/PERFORMANCE.md)
+- **Connection errors**: Review [Deployment Guide](docs/DEPLOYMENT.md#networking)
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) first.
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Email**: support@your-domain.com
+
+## 🙏 Acknowledgments
+
+- [Pipecat Framework](https://github.com/pipecat-ai/pipecat) - Voice AI pipeline
+- [Sarvam AI](https://sarvam.ai) - Indian language AI models
+- [Twilio](https://twilio.com) - Telephony infrastructure
+- [FastAPI](https://fastapi.tiangolo.com) - Web framework
+
+---
+
+**Built with ❤️ for production voice AI applications**

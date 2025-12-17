@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from loguru import logger
 
-from pipeline.runner import run_bot, create_bot_pipeline
+from pipeline.runner import run_bot
 from api.dependencies import get_session, store_session, remove_session
 from models.call_session import CallState
 
@@ -120,38 +120,18 @@ async def handle_media_stream(
         logger.info(f"🤖 [CHECKPOINT 0] Starting bot with stream_sid={stream_sid}, call_sid={call_sid}")
         logger.info("=" * 80)
         
-        # Create pipeline and wait for readiness before processing media frames
-        from pipeline.runner import create_bot_pipeline
-        import asyncio
-        
-        logger.info("🔧 Creating pipeline components...")
-        builder, runner, task, session = await create_bot_pipeline(
+        # Run the bot pipeline (handles everything including readiness)
+        logger.info("🚀 Starting bot pipeline...")
+        session = await run_bot(
             websocket=websocket,
             stream_sid=stream_sid,  # Real Stream SID extracted from Twilio's 'start' message
             call_sid=call_sid,      # Real Call SID extracted from Twilio's 'start' message
             language=selected_language
         )
         
-        logger.info("⏳ Ensuring pipeline readiness before processing media frames...")
-        
-        # Start readiness check asynchronously
-        asyncio.create_task(builder.ensure_pipeline_ready())
-        
-        # Wait for pipeline to be ready before allowing media frame processing
-        try:
-            await asyncio.wait_for(builder.pipeline_ready.wait(), timeout=5.0)
-            logger.info("✅ Pipeline ready - safe to process Twilio media frames")
-        except asyncio.TimeoutError:
-            logger.error("❌ Pipeline not ready in time - cannot process Twilio media")
-            raise
-        
-        # Now run the pipeline (this will process media frames)
-        logger.info("🚀 Starting pipeline runner...")
-        await runner.run(task)
-        
         # Update session state
         from datetime import datetime
-        from utils.analytics import track_call_ended
+        from app.middleware import track_call_ended
         session.state = CallState.ENDED
         session.ended_at = datetime.utcnow()
         track_call_ended(selected_language, "completed")

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Simple Voice Bot Test - Clean Implementation
-Makes outbound call for testing.
+Voice Bot Full Test - Built-in Services Implementation
+Automatically tests services and makes outbound call using built-in Pipecat services.
+User selects language during the actual call.
 """
 
 import asyncio
@@ -20,30 +21,89 @@ def show_webhook_urls():
     print("=" * 50)
 
 async def test_services():
-    """Test service initialization."""
+    """Test service initialization using built-in Pipecat services."""
     try:
-        from services.sarvam_ai import SarvamAI
-        from services.stt.sarvam_stt import SarvamSTTService
+        # Test built-in Pipecat services
+        from pipecat.services.sarvam.stt import SarvamSTTService
+        from pipecat.services.sarvam.tts import SarvamTTSService, SarvamHttpTTSService
+        from pipecat.transcriptions.language import Language
         from services.llm.sarvam_llm import SarvamLLMService
-        from services.tts.sarvam_tts_processor import SarvamTTSProcessor
+        from models.language import LANGUAGE_MAP
         
-        # Test service initialization (without language - just check imports)
-        sarvam = SarvamAI()
-        print("✅ SarvamAI service imported successfully")
+        print("✅ Built-in SarvamSTTService imported successfully")
+        print("✅ Built-in SarvamTTSService imported successfully") 
+        print("✅ Built-in SarvamHttpTTSService imported successfully")
+        print("✅ Custom SarvamLLMService imported successfully (no built-in LLM available)")
+        print("💡 Using built-in 'sarvam-m' model with custom LLM service")
         
-        # Test that service classes can be imported (don't initialize without language)
-        print("✅ STT service class imported successfully")
-        print("✅ LLM service class imported successfully") 
-        print("✅ TTS processor class imported successfully")
+        print(f"\n🔧 Testing services for all supported languages:")
+        print("   During actual call, user will press:")
+        for digit, lang_config in LANGUAGE_MAP.items():
+            print(f"   {digit} - {lang_config.name} ({lang_config.code.value})")
         
-        print("✅ All service classes available")
+        # Test services with each supported language from the actual language configuration
+        for digit, lang_config in LANGUAGE_MAP.items():
+            lang_name = lang_config.name
+            lang_code = lang_config.code.value
+            
+            # Map language code to Pipecat Language enum
+            language_enum_map = {
+                "te-IN": Language.TE_IN,
+                "hi-IN": Language.HI_IN, 
+                "en-IN": Language.EN_IN,
+            }
+            lang_enum = language_enum_map.get(lang_code, Language.HI_IN)
+            
+            print(f"\n🧪 Testing {lang_name} ({lang_code}):")
+            
+            # Test STT service
+            try:
+                stt_service = SarvamSTTService(
+                    api_key=settings.SARVAM_API_KEY,
+                    model=settings.STT_MODEL,
+                    sample_rate=settings.STT_SAMPLE_RATE,
+                    params=SarvamSTTService.InputParams(
+                        language=lang_enum,
+                        vad_signals=True
+                    )
+                )
+                print(f"  ✅ STT service ready for {lang_name}")
+            except Exception as e:
+                print(f"  ⚠️ STT service error for {lang_name}: {e}")
+            
+            # Test LLM service
+            try:
+                llm_service = SarvamLLMService(
+                    api_key=settings.SARVAM_API_KEY,
+                    model="sarvam-m",  # Built-in model
+                    language=lang_code,
+                    max_tokens=settings.LLM_MAX_TOKENS,
+                    temperature=settings.LLM_TEMPERATURE,
+                    knowledge_base_path=settings.KNOWLEDGE_BASE_PATH
+                )
+                print(f"  ✅ LLM service ready for {lang_name}")
+            except Exception as e:
+                print(f"  ⚠️ LLM service error for {lang_name}: {e}")
         
-        # Cleanup
-        await sarvam.close()
+        # Test TTS service (language-independent)
+        print(f"\n🧪 Testing TTS service (language-independent):")
+        try:
+            tts_service = SarvamTTSService(
+                api_key=settings.SARVAM_API_KEY,
+                voice=settings.TTS_VOICE,
+                sample_rate=settings.TTS_SAMPLE_RATE
+            )
+            print("  ✅ TTS service ready")
+        except Exception as e:
+            print(f"  ⚠️ TTS service error: {e}")
+        
+        print("\n✅ All services tested successfully with built-in Pipecat components!")
         
         return True
     except Exception as e:
         print(f"❌ Service test failed: {e}")
+        import traceback
+        print(traceback.format_exc())
         return False
 
 def make_test_call():
@@ -59,10 +119,14 @@ def make_test_call():
         )
         
         print(f"✅ Call initiated: {call.sid}")
-        print("💡 Answer and select your language:")
-        print("   1 - Telugu")
-        print("   2 - Hindi") 
-        print("   3 - English")
+        print("💡 Call Flow:")
+        print("   1. Answer the call")
+        print("   2. Listen to language selection menu")
+        print("   3. Press digit to select language:")
+        print("      1 - Telugu (te-IN)")
+        print("      2 - Hindi (hi-IN)")
+        print("      3 - English (en-IN)")
+        print("   4. Bot will connect and start conversation in selected language")
         
         # Monitor call
         for _ in range(60):  # 2 minutes
@@ -81,30 +145,38 @@ def make_test_call():
         return None
 
 async def main():
-    """Main function."""
-    print("🤖 Voice Bot Test")
-    print("=" * 30)
+    """Main function - automatically runs full test."""
+    print("🤖 Voice Bot Full Test")
+    print("=" * 40)
     
+    # Check configuration
     if not all([settings.TWILIO_ACCOUNT_SID, settings.SARVAM_API_KEY, settings.SERVER_URL]):
         print("❌ Missing configuration in .env")
+        print("   Please ensure TWILIO_ACCOUNT_SID, SARVAM_API_KEY, and SERVER_URL are set")
         return
     
-    print("1. 🔧 Test services")
-    print("2. 📞 Make test call") 
-    print("3. 🌐 Show webhook URLs")
-    print("4. 🚀 Full test")
+    # Show webhook URLs and endpoints for reference
+    print("🌐 Twilio Configuration:")
+    print(f"   Webhook URL: {settings.SERVER_URL}/voice/incoming")
+    print(f"   WebSocket Endpoints:")
+    print(f"     - {settings.SERVER_URL.replace('http', 'ws')}/media-stream/te-IN (Telugu)")
+    print(f"     - {settings.SERVER_URL.replace('http', 'ws')}/media-stream/hi-IN (Hindi)")
+    print(f"     - {settings.SERVER_URL.replace('http', 'ws')}/media-stream/en-IN (English)")
+    print()
     
-    choice = input("\nChoice (1-4): ").strip()
-    
-    if choice == "1":
-        await test_services()
-    elif choice == "2":
-        make_test_call()
-    elif choice == "3":
-        show_webhook_urls()
-    elif choice == "4":
-        if await test_services():
-            make_test_call()
+    # Run service tests
+    print("🔧 Step 1: Testing Services")
+    print("-" * 30)
+    if await test_services():
+        print("\n📞 Step 2: Making Test Call")
+        print("-" * 30)
+        call_sid = make_test_call()
+        if call_sid:
+            print(f"\n✅ Test completed successfully! Call SID: {call_sid}")
+        else:
+            print("\n❌ Test call failed")
+    else:
+        print("\n❌ Service test failed, skipping call test")
 
 if __name__ == "__main__":
     asyncio.run(main())

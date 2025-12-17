@@ -14,31 +14,35 @@ The architecture is inspired by [Bolna](https://github.com/bolna-ai/bolna) and f
 ### ✅ Core Capabilities
 
 1. **Multi-language Support**
-   - Telugu (te-IN)
-   - Hindi (hi-IN)
-   - English (en-IN)
-   - Tamil (ta-IN)
+   - Telugu (te-IN) - Press 1
+   - Hindi (hi-IN) - Press 2
+   - English (en-IN) - Press 3
+   - IVR-based language selection (no detection needed)
 
 2. **Real-time Voice Conversation**
    - Ultra-low latency: 500-800ms end-to-end
+   - WebSocket streaming for STT and TTS
    - Natural conversation flow
-   - Interruption handling
+   - Interruption handling with CancelFrame
 
-3. **Voice Activity Detection (VAD)**
-   - Automatic speech detection
-   - Silence detection
-   - Adaptive thresholds
+3. **Built-in Pipecat Services**
+   - SarvamSTTService (WebSocket, built-in)
+   - SarvamTTSService (WebSocket, built-in)
+   - LLMUserContextAggregator (built-in)
+   - LLMAssistantContextAggregator (built-in, patched)
 
 4. **Knowledge Base RAG**
    - Context-aware responses
    - Multilingual knowledge support
-   - Easy knowledge base updates
+   - Semantic search with scoring
+   - Easy knowledge base updates (JSON format)
 
 5. **Analytics & Monitoring**
-   - Call tracking
+   - Prometheus metrics at `/metrics`
+   - Call tracking and analytics
    - Performance metrics
+   - Structured logging with loguru
    - Error monitoring
-   - Debug audio recording
 
 ### 🏗️ Architecture Highlights
 
